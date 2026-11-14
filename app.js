@@ -1,6 +1,5 @@
 (function(){
-const D=window.GUIDE;
-const TZ='Australia/Sydney';
+const TZ='Australia/Melbourne';
 const fT=new Intl.DateTimeFormat('en-AU',{timeZone:TZ,hour:'numeric',minute:'2-digit',hour12:true});
 const fD=new Intl.DateTimeFormat('en-AU',{timeZone:TZ,weekday:'short',day:'numeric',month:'short'});
 const fK=new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'});
@@ -10,45 +9,27 @@ const nowM=()=>Math.floor(Date.now()/60000);
 const PX=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--px-per-min'))||5;
 const LW=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--label-w'))||112;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const MAP={fsa500:'500',fsa501:'501',fsa502:'502',fsa503:'503',fsa504:'504',fsa505:'505',fsa506:'506',fsa507:'507',espn1:'509',espn2:'510',racing:'529',kayo:'KAYO'};
-const BASE=JSON.parse(JSON.stringify(D.channels));
-let all=[],minS=0,maxE=0,days=[],live=null,lastFetch=null;
-try{const c=JSON.parse(localStorage.getItem('kg-live')||'null');if(c){live=c.ev;lastFetch=c.at}}catch(e){}
+let D=window.GUIDE;
+try{const c=JSON.parse(localStorage.getItem('kg-guide')||'null');if(c&&c.updated&&(!D||new Date(c.updated)>new Date(D.updated)))D=c}catch(e){}
+let all=[],minS=0,maxE=0,days=[];
 function build(){
-  const chans=BASE.map(c=>({name:c.name,num:c.num,p:c.p.slice()}));
-  if(live&&live.length){
-    if(live.some(e=>e.num==='KAYO')&&!chans.some(c=>c.num==='KAYO'))chans.push({name:'Kayo Exclusives',num:'KAYO',p:[]});
-    chans.forEach(c=>{const ev=live.filter(e=>e.num===c.num);if(!ev.length)return;
-      c.p=c.p.filter(p=>!ev.some(e=>e.s<p[1]&&e.e>p[0])).concat(ev.map(e=>[e.s,e.e,e.title,e.comp,1])).sort((a,b)=>a[0]-b[0])});
-  }
-  D.channels=chans;all=[];
-  chans.forEach((c,ci)=>c.p.forEach(p=>all.push({ci,s:p[0],e:p[1],title:p[2],comp:p[3]})));
+  all=[];D.channels.forEach((c,ci)=>c.p.forEach(p=>all.push({ci,s:p[0],e:p[1],title:p[2],comp:p[3]})));
   minS=Math.min(...all.map(p=>p.s));maxE=Math.max(...all.map(p=>p.e));
   const today=key(nowM());days=[];
   for(let m=minS;m<maxE;m+=60){const k=key(m);if(k>=today&&!days.some(d=>d.k===k))days.push({k,m})}
   if(!days.length)days.push({k:today,m:nowM()});
 }
 function dayStart(k){let m=(days.find(d=>d.k===k)||days[0]).m;while(key(m-1)===k)m--;return m}
-function syd(offsetDays){return key(nowM()+offsetDays*1440)}
-async function refresh(){const btn=document.getElementById('refresh');btn.disabled=true;btn.textContent='Updating…';
-  try{const ev=[];
-    for(let i=-1;i<3;i++){const dt=syd(i);
-      const r=await fetch('https://epg.discovery.indazn.com/eu/v5/Epg?date='+dt+'&country=au&languageCode=en&openBrowse=true&timeZoneOffset=660&platform=web&brand=kayo',{cache:'no-store'});
-      if(!r.ok)throw new Error(r.status);const j=await r.json();
-      (j.Tiles||[]).forEach(x=>{if(!x||x.IsLinear)return;const num=MAP[x.LinearProvider];if(!num)return;
-        const s=Math.floor(Date.parse(x.Start)/60000);let e=x.End?Math.ceil(Date.parse(x.End)/60000):(x.DurationInMillis?s+Math.round(x.DurationInMillis/60000):0);
-        if(!(s>0)||(e&&(e<=s||e-s>1440)))return;
-        if(ev.some(o=>o.num===num&&o.s===s&&o.title===x.Title))return;
-        ev.push({num,s,e,title:x.Title,comp:(x.Competition&&x.Competition.Title)||x.Label||''})})}
-    ev.sort((a,b)=>a.s-b.s);
-    ev.forEach(o=>{if(o.e)return;const nx=ev.find(n=>n.num===o.num&&n.s>o.s);o.e=Math.min(nx?nx.s:o.s+180,o.s+180);if(o.e-o.s<30)o.e=o.s+30});
-    live=ev;lastFetch=Date.now();try{localStorage.setItem('kg-live',JSON.stringify({ev,at:lastFetch}))}catch(e){}
-    rebuild();
-  }catch(e){status('Couldn’t reach Kayo just now. Showing the last update.')}
+let lastCheck=0;
+async function refresh(manual){const btn=document.getElementById('refresh');btn.disabled=true;btn.textContent='Updating…';
+  try{const r=await fetch('guide.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error(r.status);
+    const j=await r.json();if(!j.channels||!j.channels.length)throw new Error('empty');
+    lastCheck=Date.now();
+    if(!D||j.updated!==D.updated){D=j;try{localStorage.setItem('kg-guide',JSON.stringify(j))}catch(e){}rebuild()}else status();
+  }catch(e){status('Couldn’t check for a newer guide just now.')}
   btn.disabled=false;btn.textContent='Refresh'}
-function status(extra){const el=document.getElementById('updated');
-  el.textContent=(lastFetch?'Live events updated '+fD.format(new Date(lastFetch))+', '+t(Math.floor(lastFetch/60000))+'. ':'')+
-  'Full listings copied from your Kayo account '+fD.format(new Date(D.updated))+'. Times are Sydney time.'+(extra?' '+extra:'')}
+function status(extra){const u=new Date(D.updated);
+  document.getElementById('updated').textContent='Listings updated '+fD.format(u)+', '+t(Math.floor(u.getTime()/60000))+'. Times are Melbourne time.'+(extra?' '+extra:'')}
 function rebuild(){build();if(!days.some(d=>d.k===day))day=days[0].k;renderDays();render(true);status()}
 build();
 let view='grid', day=null;
@@ -107,8 +88,8 @@ function setView(v){view=v;try{localStorage.setItem('kg-view',v)}catch(e){}
 document.getElementById('v-grid').onclick=()=>setView('grid');document.getElementById('v-list').onclick=()=>setView('list');
 function tick(){document.getElementById('clock').textContent=t(nowM())}
 renderDays();setView(view);tick();render(true);status();
-document.getElementById('refresh').onclick=refresh;refresh();
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&(!lastFetch||Date.now()-lastFetch>10*60000))refresh()});
+document.getElementById('refresh').onclick=()=>refresh(true);refresh();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastCheck>5*60000)refresh()});
 setInterval(()=>{tick();const g=document.getElementById('grid');const sl=g.scrollLeft;render(false);g.scrollLeft=sl},60000);
 let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>render(true),200)});
 })();

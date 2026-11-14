@@ -1,0 +1,24 @@
+name: Update guide
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: update-guide
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/update_guide.py
+      - name: Commit if changed
+        run: |
+          python -c "import json;d=json.load(open('guide.json'));open('guide-data.js','w').write('window.GUIDE='+json.dumps(d,separators=(',',':'),ensure_ascii=False)+';\n')"
+          git config user.name "guide-bot"
+          git config user.email "guide-bot@users.noreply.github.com"
+          git add guide.json guide-data.js
+          git diff --cached --quiet || (git commit -m "Update guide" && git push)
