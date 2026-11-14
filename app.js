@@ -13,6 +13,7 @@ let D=window.GUIDE;
 try{const c=JSON.parse(localStorage.getItem('kg-guide')||'null');if(c&&c.updated&&(!D||new Date(c.updated)>new Date(D.updated)))D=c}catch(e){}
 let all=[],minS=0,maxE=0,days=[];
 function build(){
+  D.channels.sort((a,b)=>(parseInt(a.num)||9999)-(parseInt(b.num)||9999));
   all=[];D.channels.forEach((c,ci)=>c.p.forEach(p=>all.push({ci,s:p[0],e:p[1],title:p[2],comp:p[3]})));
   minS=Math.min(...all.map(p=>p.s));maxE=Math.max(...all.map(p=>p.e));
   const today=key(nowM());days=[];

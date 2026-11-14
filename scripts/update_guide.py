@@ -6,16 +6,16 @@ API = "https://www.yourtv.com.au/api"
 TZ = zoneinfo.ZoneInfo("Australia/Melbourne")
 # (display name, number shown, yourTV region, yourTV channel name)
 CHANNELS = [
-    ("Fox League", "502", 168, "FOX League HD"),
-    ("Fox Footy", "504", 168, "FOX FOOTY HD"),
+    ("Fox Sports News", "500", 168, "FOX SPORTS News HD"),
     ("Fox Cricket", "501", 168, "FOX Cricket HD"),
-    ("ESPN", "509", 168, "ESPN HD"),
+    ("Fox League", "502", 168, "FOX League HD"),
     ("Fox Sports 503", "503", 168, "FOX SPORTS 503 HD"),
+    ("Fox Footy", "504", 168, "FOX FOOTY HD"),
     ("Fox Sports 505", "505", 168, "FOX SPORTS 505 HD"),
     ("Fox Sports 506", "506", 168, "FOX SPORTS 506 HD"),
     ("Fox Sports 507", "507", 168, "FOX SPORTS 507 HD"),
+    ("ESPN", "509", 168, "ESPN HD"),
     ("ESPN2", "510", 168, "ESPN2HD"),
-    ("Fox Sports News", "500", 168, "FOX SPORTS News HD"),
     ("Racing.com", "529", 94, "RACING.COM"),
 ]
 
