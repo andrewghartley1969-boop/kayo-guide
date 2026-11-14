@@ -1,10 +1,27 @@
-name: probe
-on: [push]
+name: login-test
+on: [workflow_dispatch]
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
       - shell: bash {0}
+        env:
+          OTV_EMAIL: ${{ secrets.OTV_EMAIL }}
+          OTV_PASSWORD: ${{ secrets.OTV_PASSWORD }}
         run: |
-          code=$(curl --http1.1 -s -L --compressed -A "Mozilla/5.0 (Macintosh) Safari/605.1.15" -m 20 -o out.txt -w '%{http_code} %{size_download}' "https://www.ontvtonight.com/au/guide/listings/channel/2870/racingcom.html")
-          echo "== $code"; grep -o 'Racing Review[^<]*' out.txt | head -3
+          UA="Mozilla/5.0 (Macintosh) Safari/605.1.15"
+          B=https://www.ontvtonight.com
+          [ -z "$OTV_EMAIL" ] && echo "== secrets missing" && exit 1
+          curl -s --compressed -c cj -b cj -A "$UA" $B/au/user/login -o l.html
+          T=$(grep -oE 'name="_token" value="[^"]+"' l.html | head -1 | cut -d'"' -f4)
+          curl -s --compressed -L -c cj -b cj -A "$UA" -o r.html -w '== login %{http_code} %{url_effective}\n' \
+            --data-urlencode "_token=$T" --data-urlencode "email=$OTV_EMAIL" --data-urlencode "password=$OTV_PASSWORD" $B/au/user/dologin
+          grep -q 'Sign out\|Logout\|logout' r.html && echo "== signed in" || echo "== NOT signed in"
+          curl -s --compressed -L -c cj -b cj -A "$UA" -o ch.html $B/au/user/channels
+          echo "== my channel links:"; grep -oE '/au/guide/listings/channel/[0-9]+/[a-z0-9-]+\.html' ch.html | sort -u | grep -iE 'fox|espn|racing' | head -40
+          D=$(TZ=Australia/Melbourne date -d tomorrow +%F)
+          for id in 3181 3183 3180 3188 3260 3231 3343 3335; do
+            curl -s --compressed -L -c cj -b cj -A "$UA" -o c.html "$B/au/guide/listings/channel/$id/x.html?dt=$D"
+            t=$(grep -oE '<title>[^<]*' c.html | head -1)
+            if grep -q ott-channel-empty c.html; then echo "== $id $t EMPTY"; else echo "== $id $t HAS LISTINGS"; sed 's/<[^>]*>/ /g' c.html | tr -s ' \n' ' ' | grep -oE 'Time TV Show.{0,300}'; fi
+          done
