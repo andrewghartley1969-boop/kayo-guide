@@ -1,0 +1,10 @@
+name: probe
+on: [push]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash {0}
+        run: |
+          code=$(curl --http1.1 -s -L --compressed -A "Mozilla/5.0 (Macintosh) Safari/605.1.15" -m 20 -o out.txt -w '%{http_code} %{size_download}' "https://www.ontvtonight.com/au/guide/listings/channel/2870/racingcom.html")
+          echo "== $code"; grep -o 'Racing Review[^<]*' out.txt | head -3
