@@ -41,7 +41,7 @@ const dayEl=document.getElementById('days');
 function renderDays(){dayEl.innerHTML='';days.forEach(d=>{const b=document.createElement('button');b.className='tab';b.id='d-'+d.k;
   b.textContent=d.k===key(nowM())?'Today':(d.k===key(nowM()+1440)?'Tomorrow':fD.format(new Date(d.m*60000)));
   b.setAttribute('aria-pressed',d.k===day);b.onclick=()=>{day=d.k;renderDays();render(true)};dayEl.appendChild(b)})}
-function logo(c,sz){return '<span class="logo'+(sz?' '+sz:'')+'"><img src="logos/'+esc(c.num)+'.png?v=1" alt="'+esc(c.name)+'" onerror="this.parentNode.outerHTML=\'<b>'+esc(c.name)+'</b>\'"></span>'}
+function logo(c,sz){return '<span class="logo'+(sz?' '+sz:'')+'"><img src="logos/'+esc(c.num)+'.png?v=2" alt="'+esc(c.name)+'" onerror="this.parentNode.outerHTML=\'<b>'+esc(c.name)+'</b>\'"></span>'}
 function cls(p,n){return p.e<=n?'past':(p.s<=n?'on':'')}
 function renderStrip(){const n=nowM();const el=document.getElementById('strip');el.innerHTML='';
   D.channels.forEach((c,ci)=>{const ps=all.filter(p=>p.ci===ci);const cur=ps.find(p=>p.s<=n&&p.e>n);const nx=ps.find(p=>p.s>n);
