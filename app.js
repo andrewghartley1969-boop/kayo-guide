@@ -40,13 +40,14 @@ const dayEl=document.getElementById('days');
 function renderDays(){dayEl.innerHTML='';days.forEach(d=>{const b=document.createElement('button');b.className='tab';b.id='d-'+d.k;
   b.textContent=d.k===key(nowM())?'Today':(d.k===key(nowM()+1440)?'Tomorrow':fD.format(new Date(d.m*60000)));
   b.setAttribute('aria-pressed',d.k===day);b.onclick=()=>{day=d.k;renderDays();render(true)};dayEl.appendChild(b)})}
+function logo(c,sz){return '<span class="logo'+(sz?' '+sz:'')+'"><img src="logos/'+esc(c.num)+'.png?v=1" alt="'+esc(c.name)+'" onerror="this.parentNode.outerHTML=\'<b>'+esc(c.name)+'</b>\'"></span>'}
 function cls(p,n){return p.e<=n?'past':(p.s<=n?'on':'')}
 function renderStrip(){const n=nowM();const el=document.getElementById('strip');el.innerHTML='';
   D.channels.forEach((c,ci)=>{const ps=all.filter(p=>p.ci===ci);const cur=ps.find(p=>p.s<=n&&p.e>n);const nx=ps.find(p=>p.s>n);
     const b=document.createElement('button');b.className='nowcard';
     if(!cur&&!nx){return}
     const pct=cur?Math.round((n-cur.s)/(cur.e-cur.s)*100):0;
-    b.innerHTML='<span class="ch">'+esc(c.name)+' · '+esc(c.num)+'</span><span class="t">'+(cur?'<span class="live">ON NOW</span>'+esc(cur.title):'Up next: '+esc(nx.title))+'</span>'+
+    b.innerHTML='<span class="ch">'+logo(c,'xs')+esc(c.name)+' · '+esc(c.num)+'</span><span class="t">'+(cur?'<span class="live">ON NOW</span>'+esc(cur.title):'Up next: '+esc(nx.title))+'</span>'+
       (cur?'<span class="bar"><i style="width:'+pct+'%"></i></span>':'')+
       '<span class="next">'+(cur&&nx?'Next '+t(nx.s)+' · '+esc(nx.title):(nx?t(nx.s):'Until '+t(cur.e)))+'</span>';
     b.onclick=()=>open(cur||nx);el.appendChild(b)})}
@@ -57,7 +58,7 @@ function render(scroll){const n=nowM();const px=PX(),lw=LW();
   let h='<div class="ruler" style="width:'+W+'px"><div class="corner"></div>';
   for(let m=Math.ceil(s/30)*30;m<e;m+=30){h+='<div class="tick" style="left:'+(lw+(m-s)*px)+'px">'+t(m)+'</div>'}
   h+='</div>';
-  D.channels.forEach((c,ci)=>{h+='<div class="row" style="width:'+W+'px"><div class="label"><b>'+esc(c.name)+'</b><small>CH '+esc(c.num)+'</small></div>';
+  D.channels.forEach((c,ci)=>{h+='<div class="row" style="width:'+W+'px"><div class="label">'+logo(c)+'<small>CH '+esc(c.num)+'</small></div>';
     all.filter(p=>p.ci===ci&&p.e>s&&p.s<e).forEach(p=>{const a=Math.max(p.s,s),b=Math.min(p.e,e);const x=lw+(a-s)*px+2,w=Math.max((b-a)*px-4,6);const k=cls(p,n);
       h+='<button class="prog '+k+'" data-i="'+all.indexOf(p)+'" style="left:'+x+'px;width:'+w+'px" title="'+esc(p.title)+'">'+
       '<span class="t">'+(k==='on'?'<span class="live">LIVE</span>':'')+esc(p.title)+'</span>'+(p.comp?'<span class="c">'+esc(p.comp)+'</span>':'')+'<span class="tm">'+t(p.s)+' – '+t(p.e)+'</span></button>'});
@@ -68,7 +69,7 @@ function render(scroll){const n=nowM();const px=PX(),lw=LW();
   renderList();renderStrip()}
 function renderList(){const n=nowM();const ds=dayStart(day),de=ds+1440;let h='';
   D.channels.forEach((c,ci)=>{const ps=all.filter(p=>p.ci===ci&&p.e>ds&&p.s<de);if(!ps.length)return;
-    h+='<section><h2>'+esc(c.name)+' <small>CH '+esc(c.num)+'</small></h2>';
+    h+='<section><h2>'+logo(c,'sm')+esc(c.name)+' <small>CH '+esc(c.num)+'</small></h2>';
     ps.forEach(p=>{const k=cls(p,n);h+='<div class="li '+k+'" data-i="'+all.indexOf(p)+'" tabindex="0"><div class="tm">'+t(p.s)+' – '+t(p.e)+'</div><div class="t">'+(k==='on'?'<span class="live">LIVE</span>':'')+esc(p.title)+(p.comp?'<div class="c">'+esc(p.comp)+'</div>':'')+'</div></div>'});
     h+='</section>'});
   document.getElementById('list').innerHTML=h||'<p class="note">No listings for this day.</p>'}
