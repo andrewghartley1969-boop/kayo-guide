@@ -36,9 +36,12 @@ async function refresh(){const btn=document.getElementById('refresh');btn.disabl
       const r=await fetch('https://epg.discovery.indazn.com/eu/v5/Epg?date='+dt+'&country=au&languageCode=en&openBrowse=true&timeZoneOffset=660&platform=web&brand=kayo',{cache:'no-store'});
       if(!r.ok)throw new Error(r.status);const j=await r.json();
       (j.Tiles||[]).forEach(x=>{if(!x||x.IsLinear)return;const num=MAP[x.LinearProvider];if(!num)return;
-        const s=Math.floor(Date.parse(x.Start)/60000),e=Math.ceil(Date.parse(x.End)/60000);if(!(e>s)||e-s>1440)return;
+        const s=Math.floor(Date.parse(x.Start)/60000);let e=x.End?Math.ceil(Date.parse(x.End)/60000):(x.DurationInMillis?s+Math.round(x.DurationInMillis/60000):0);
+        if(!(s>0)||(e&&(e<=s||e-s>1440)))return;
         if(ev.some(o=>o.num===num&&o.s===s&&o.title===x.Title))return;
         ev.push({num,s,e,title:x.Title,comp:(x.Competition&&x.Competition.Title)||x.Label||''})})}
+    ev.sort((a,b)=>a.s-b.s);
+    ev.forEach(o=>{if(o.e)return;const nx=ev.find(n=>n.num===o.num&&n.s>o.s);o.e=Math.min(nx?nx.s:o.s+180,o.s+180);if(o.e-o.s<30)o.e=o.s+30});
     live=ev;lastFetch=Date.now();try{localStorage.setItem('kg-live',JSON.stringify({ev,at:lastFetch}))}catch(e){}
     rebuild();
   }catch(e){status('Couldn’t reach Kayo just now. Showing the last update.')}
