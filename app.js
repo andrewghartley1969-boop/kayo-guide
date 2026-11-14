@@ -59,7 +59,7 @@ function render(scroll){const n=nowM();const px=PX(),lw=LW();
   let h='<div class="ruler" style="width:'+W+'px"><div class="corner"></div>';
   for(let m=Math.ceil(s/30)*30;m<e;m+=30){h+='<div class="tick" style="left:'+(lw+(m-s)*px)+'px">'+t(m)+'</div>'}
   h+='</div>';
-  D.channels.forEach((c,ci)=>{h+='<div class="row" style="width:'+W+'px"><div class="label">'+logo(c)+'<small>CH '+esc(c.num)+'</small></div>';
+  D.channels.forEach((c,ci)=>{h+='<div class="row" style="width:'+W+'px"><div class="label">'+logo(c)+'</div>';
     all.filter(p=>p.ci===ci&&p.e>s&&p.s<e).forEach(p=>{const a=Math.max(p.s,s),b=Math.min(p.e,e);const x=lw+(a-s)*px+2,w=Math.max((b-a)*px-4,6);const k=cls(p,n);
       h+='<button class="prog '+k+'" data-i="'+all.indexOf(p)+'" style="left:'+x+'px;width:'+w+'px" title="'+esc(p.title)+'">'+
       '<span class="t">'+(k==='on'?'<span class="live">LIVE</span>':'')+esc(p.title)+'</span>'+(p.comp?'<span class="c">'+esc(p.comp)+'</span>':'')+'<span class="tm">'+t(p.s)+' – '+t(p.e)+'</span></button>'});
