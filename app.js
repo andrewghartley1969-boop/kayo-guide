@@ -10,18 +10,51 @@ const nowM=()=>Math.floor(Date.now()/60000);
 const PX=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--px-per-min'))||5;
 const LW=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--label-w'))||112;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let all=[];D.channels.forEach((c,ci)=>c.p.forEach(p=>all.push({ci,s:p[0],e:p[1],title:p[2],comp:p[3]})));
-const minS=Math.min(...all.map(p=>p.s)), maxE=Math.max(...all.map(p=>p.e));
-const days=[];for(let m=minS;m<maxE;m+=60){const k=key(m);if(!days.some(d=>d.k===k))days.push({k,m})}
-function dayStart(k){let m=days.find(d=>d.k===k).m;while(key(m-1)===k)m--;return m}
+const MAP={fsa500:'500',fsa501:'501',fsa502:'502',fsa503:'503',fsa504:'504',fsa505:'505',fsa506:'506',fsa507:'507',espn1:'509',espn2:'510',racing:'529',kayo:'KAYO'};
+const BASE=JSON.parse(JSON.stringify(D.channels));
+let all=[],minS=0,maxE=0,days=[],live=null,lastFetch=null;
+try{const c=JSON.parse(localStorage.getItem('kg-live')||'null');if(c){live=c.ev;lastFetch=c.at}}catch(e){}
+function build(){
+  const chans=BASE.map(c=>({name:c.name,num:c.num,p:c.p.slice()}));
+  if(live&&live.length){
+    if(live.some(e=>e.num==='KAYO')&&!chans.some(c=>c.num==='KAYO'))chans.push({name:'Kayo Exclusives',num:'KAYO',p:[]});
+    chans.forEach(c=>{const ev=live.filter(e=>e.num===c.num);if(!ev.length)return;
+      c.p=c.p.filter(p=>!ev.some(e=>e.s<p[1]&&e.e>p[0])).concat(ev.map(e=>[e.s,e.e,e.title,e.comp,1])).sort((a,b)=>a[0]-b[0])});
+  }
+  D.channels=chans;all=[];
+  chans.forEach((c,ci)=>c.p.forEach(p=>all.push({ci,s:p[0],e:p[1],title:p[2],comp:p[3]})));
+  minS=Math.min(...all.map(p=>p.s));maxE=Math.max(...all.map(p=>p.e));
+  const today=key(nowM());days=[];
+  for(let m=minS;m<maxE;m+=60){const k=key(m);if(k>=today&&!days.some(d=>d.k===k))days.push({k,m})}
+  if(!days.length)days.push({k:today,m:nowM()});
+}
+function dayStart(k){let m=(days.find(d=>d.k===k)||days[0]).m;while(key(m-1)===k)m--;return m}
+function syd(offsetDays){return key(nowM()+offsetDays*1440)}
+async function refresh(){const btn=document.getElementById('refresh');btn.disabled=true;btn.textContent='Updating…';
+  try{const ev=[];
+    for(let i=-1;i<3;i++){const dt=syd(i);
+      const r=await fetch('https://epg.discovery.indazn.com/eu/v5/Epg?date='+dt+'&country=au&languageCode=en&openBrowse=true&timeZoneOffset=660&platform=web&brand=kayo',{cache:'no-store'});
+      if(!r.ok)throw new Error(r.status);const j=await r.json();
+      (j.Tiles||[]).forEach(x=>{if(!x||x.IsLinear)return;const num=MAP[x.LinearProvider];if(!num)return;
+        const s=Math.floor(Date.parse(x.Start)/60000),e=Math.ceil(Date.parse(x.End)/60000);if(!(e>s)||e-s>1440)return;
+        if(ev.some(o=>o.num===num&&o.s===s&&o.title===x.Title))return;
+        ev.push({num,s,e,title:x.Title,comp:(x.Competition&&x.Competition.Title)||x.Label||''})})}
+    live=ev;lastFetch=Date.now();try{localStorage.setItem('kg-live',JSON.stringify({ev,at:lastFetch}))}catch(e){}
+    rebuild();
+  }catch(e){status('Couldn’t reach Kayo just now. Showing the last update.')}
+  btn.disabled=false;btn.textContent='Refresh'}
+function status(extra){const el=document.getElementById('updated');
+  el.textContent=(lastFetch?'Live events updated '+fD.format(new Date(lastFetch))+', '+t(Math.floor(lastFetch/60000))+'. ':'')+
+  'Full listings copied from your Kayo account '+fD.format(new Date(D.updated))+'. Times are Sydney time.'+(extra?' '+extra:'')}
+function rebuild(){build();if(!days.some(d=>d.k===day))day=days[0].k;renderDays();render(true);status()}
+build();
 let view='grid', day=null;
 try{view=localStorage.getItem('kg-view')||'grid'}catch(e){}
 const todayK=key(nowM());
 day=days.some(d=>d.k===todayK)?todayK:days[0].k;
-document.getElementById('updated').textContent='Guide copied from your Kayo account '+fD.format(new Date(D.updated))+', '+t(Math.floor(new Date(D.updated).getTime()/60000))+'. Covers '+fD.format(new Date(minS*60000))+' to '+fD.format(new Date((maxE-1)*60000))+'. Times are Sydney time.';
 const dayEl=document.getElementById('days');
 function renderDays(){dayEl.innerHTML='';days.forEach(d=>{const b=document.createElement('button');b.className='tab';b.id='d-'+d.k;
-  b.textContent=d.k===todayK?'Today':(d.k===key(nowM()+1440)?'Tomorrow':fD.format(new Date(d.m*60000)));
+  b.textContent=d.k===key(nowM())?'Today':(d.k===key(nowM()+1440)?'Tomorrow':fD.format(new Date(d.m*60000)));
   b.setAttribute('aria-pressed',d.k===day);b.onclick=()=>{day=d.k;renderDays();render(true)};dayEl.appendChild(b)})}
 function cls(p,n){return p.e<=n?'past':(p.s<=n?'on':'')}
 function renderStrip(){const n=nowM();const el=document.getElementById('strip');el.innerHTML='';
@@ -70,7 +103,9 @@ function setView(v){view=v;try{localStorage.setItem('kg-view',v)}catch(e){}
   document.getElementById('v-grid').setAttribute('aria-pressed',v==='grid');document.getElementById('v-list').setAttribute('aria-pressed',v==='list')}
 document.getElementById('v-grid').onclick=()=>setView('grid');document.getElementById('v-list').onclick=()=>setView('list');
 function tick(){document.getElementById('clock').textContent=t(nowM())}
-renderDays();setView(view);tick();render(true);
+renderDays();setView(view);tick();render(true);status();
+document.getElementById('refresh').onclick=refresh;refresh();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&(!lastFetch||Date.now()-lastFetch>10*60000))refresh()});
 setInterval(()=>{tick();const g=document.getElementById('grid');const sl=g.scrollLeft;render(false);g.scrollLeft=sl},60000);
 let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>render(true),200)});
 })();
