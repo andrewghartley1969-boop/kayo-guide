@@ -1,0 +1,18 @@
+name: probe
+on: [push, workflow_dispatch]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+          NOW=$(date +%s)000
+          for u in \
+            "https://www.foxtel.com.au/tv-guide" \
+            "https://www.foxtel.com.au/webepg/ws/foxtel/grid/events?startDate=$NOW&duration=6&movieHeight=110&channelLimit=200&detailedView=false&regionId=8336" \
+            "https://www.foxtel.com.au/webepg/ws/foxtel/channels?regionId=8336" \
+            "https://www.foxtel.com.au/tv-guide/channel/fox-league/502" \
+            "https://kayosports.com.au/tv-guide" ; do
+            code=$(curl -s -L -A "$UA" -m 20 -o out.txt -w '%{http_code} %{size_download}' "$u")
+            echo "== $code $u"; head -c 600 out.txt | tr '\n' ' '; echo
+          done
